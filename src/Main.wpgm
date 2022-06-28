@@ -4,4 +4,6 @@ import wollok.game.*
 
 program abc {
 	juego.iniciar()
+	
 }
+

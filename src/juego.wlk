@@ -4,6 +4,7 @@ import objetos.*
 import objects.*
 import quest.*
 import maps.*
+import Opciones.*
 object juego {
 	const fabrica = new FactorySoil(type=0)
 	const fabricaitem = new FactoryItem(type=0)
@@ -11,7 +12,7 @@ object juego {
 	var listcolisiones = []
 	var property objetos=[]
 	var textura = []
-	var property idioma = "esp"
+	var property idioma = opcionlenguaje.espanol()
 	const pixel = 2
 	const celdas = 480 / pixel
 	method preconfig(){
@@ -36,9 +37,6 @@ object juego {
 		game.start()
 	}	
 	method menu(){
-		console.println(menudic.list().get("inicio"))
-		var opcion=0
-		var opciones=["esp","eng","jap"]
 		self.cambiarEscenario(-1)					
 		var titulos=[]
 		titulos.add(new Objeto(x=0*16,y=10*16,image=menudic.list().get("titulo")))
@@ -46,22 +44,23 @@ object juego {
 		titulos.add(new Objeto(x=4*16,y=6*16,image=menudic.list().get("idioma")))
 		titulos.add(new Objeto(x=4*16,y=3*16,image=menudic.list().get("salir")))
 		titulos.forEach({p => game.addVisual(p)})	
-		var tidioma = new Objeto(x=8*16,y=6*16,image=menudic.list().get(idioma))
+		var tidioma = new Objeto(x=8*16,y=6*16,image=menudic.list().get(opcionlenguaje.toString(idioma)))
 		game.addVisual(tidioma)
 		game.addVisual(puntero)
-		teclado.setConfig("menu")
+		teclado.setConfig(opcionteclado.menu())
 	}
 	method submenu(){
-		var auxtextura=textura
+//		var auxtextura=textura
 		self.cambiarEscenario(-1)
 		var titulos=[]
 		titulos.add(new Objeto(x=0*16,y=11*16,image=menudic.list().get("titulo2")))
 		titulos.add(new Objeto(x=4*16,y=8*16,image=menudic.list().get("reiniciar")))
 		titulos.add(new Objeto(x=4*16,y=4*16,image=menudic.list().get("salir")))
-		titulos.forEach({p => game.addVisual(p)})	
+		titulos.forEach({p => game.addVisual(p)})
+		teclado.setConfig(opcionteclado.submenu())	
 	}
 	method juego(){
-		puntos=new puntuacion()
+		puntos=new Puntuacion()
 		self.cambiarEscenario(0)
 		//game.addVisual(personaje)
 		//game.addVisual(maestro)
@@ -88,15 +87,15 @@ object juego {
 		self.liberar()
 		if(puntos.acierto()>=20){
 			self.cambiarEscenario(-3)
-			game.addVisual(new anuncios(x=2,y=10,text="juego perfecto",textColor="00FF00FF"))
+			game.addVisual(new Anuncios(x=2,y=10,text="juego perfecto",textColor="00FF00FF"))
 		}		
 		else if(puntos.acierto()>puntos.fracaso()){
 			self.cambiarEscenario(-4)
-			game.addVisual(new anuncios(x=2,y=10,text="ganaste",textColor="00FF00FF"))
+			game.addVisual(new Anuncios(x=2,y=10,text="ganaste",textColor="00FF00FF"))
 		}
 		else{
 			self.cambiarEscenario(-3)
-			game.addVisual(new anuncios(x=2,y=10,text="fallaste",textColor="FF0000FF"))
+			game.addVisual(new Anuncios(x=2,y=10,text="fallaste",textColor="FF0000FF"))
 		}
 		keyboard.any().onPressDo({
 			self.liberar()
@@ -110,34 +109,38 @@ object juego {
 		if(escenario==1) textura=fabrica.makeMap(mapa2.vector())
 		if(escenario==-3) textura=fabrica.makeMap(mapa3.vector())
 		if(escenario==-4) textura=fabrica.makeMap(mapa4.vector())
-		textura.forEach({p => game.addVisual(p)})
+		textura.forEach({p=>game.addVisual(p)})
 		if(escenario>=0){
 			game.addVisual(personaje)
 		    game.addVisual(maestro)
-			if(!listcolisiones.contains(maestro))listcolisiones.add(maestro)
-			teclado.setConfig("juego")
+			if(!listcolisiones.contains(maestro)) listcolisiones.add(maestro)
+			teclado.setConfig(opcionteclado.juego())
 		}
+		return null
 	}
 	
 	method agregarObjetos(objs){
 		objetos=fabricaitem.makes(objs)
 		objetos.forEach({o=>game.addVisual(o) listcolisiones.add(o)})
 	}
-	
-	method isColision(obj1,obj2,a,b){
-		if ( obj1.x()+a > obj2.x()+16 ) return false
-		if ( obj1.x()+16+a < obj2.x() ) return false
-		if ( obj1.y()+b > obj2.y()+16 ) return false
-		if ( obj1.y()+21+b < obj2.y() ) return false
-		return true		
+	//Nuevo sistema de colisiones, la dist son la diferencia de distancia
+	//en objetos en este caso personaje e items pero funcionaria entre 
+	// 2 personajes,enemigos,etc
+	method isColision(obj1,obj2,dist_X,dist_Y){
+		if ( obj1.x()+dist_X > obj2.x()+16 ) return false
+		if ( obj1.x()+16+dist_X < obj2.x() ) return false
+		if ( obj1.y()+dist_Y > obj2.y()+16 ) return false
+		return !( obj1.y()+21+dist_Y < obj2.y() ) 
 	}
 	
+	//Devuelve verdadero si el objeto a comparar colisiono con otro
+	//en este caso se usa para ver si el personaje colisiona con un item
 	method isColisiones(obj1,a,b){
 		return !listcolisiones.all{obj=>!self.isColision(obj1,obj,a,b)}
 	}
-	
+	//Devuelve el objeto que colisiono con el personaje 
 	method colisiones(obj1,a,b){
-		return listcolisiones.filter{obj=>self.isColision(obj1,obj,a,b)==true }
+		return listcolisiones.filter{obj=>self.isColision(obj1,obj,a,b)}
 	}
 }
 object maestro{
@@ -162,10 +165,12 @@ object maestro{
 }
 
 object personaje{
+	//constante de velocidad para el manejo de sprite
 	const velo=50
+	var movimiento=2
 	var property x=50
-	var property y=50
-	var sentido="down"
+	var property y=50	
+	var sentido=opcionpersonaje.down()
 	var property image ="personaje/0.png"
 	method medio(){return [x+16,y+16]}
 	method position() = game.at(x,y) 
@@ -173,40 +178,44 @@ object personaje{
 	method avanzar(a,b){
 	}
 		
-	method mover(a){
-		sentido=a
-		if(a=='up'){ 
+	method mover(opcion){
+		sentido=opcion
+		if(opcion==opcionpersonaje.up()){ 
 			if(!juego.isColisiones(self,0,4))
+				movimiento=opcionmovimiento.caminar()
+			else
+				movimiento=opcionmovimiento.colisiona()
 				self.up()
-			else
-				self.up_of()	
 		}
-		if(a=='down'){ 
+		if(opcion==opcionpersonaje.down()){ 
 			if(!juego.isColisiones(self,0,-4))
-				self.down()	
+				movimiento=opcionmovimiento.caminar()
 			else
-				self.down_of()	
+				movimiento=opcionmovimiento.colisiona()
+				self.down()
 		}
-		if(a=='left'){
+		if(opcion==opcionpersonaje.left()){
 			if(!juego.isColisiones(self,-4,0))
+				movimiento=opcionmovimiento.caminar()
+			else
+				movimiento=opcionmovimiento.colisiona()
 				self.left()
-			else
-				self.left_of()	
 		}
-		if(a=='right'){ 
+		if(opcion==opcionpersonaje.right()){ 
 			if(!juego.isColisiones(self,4,0))
-				self.right()
+				movimiento=opcionmovimiento.caminar()
 			else
-				self.right_of()	
+				movimiento=opcionmovimiento.colisiona()
+				self.right()
 		}
 		
 	}
 	method interactuar(){
 		var toco
-		if(sentido=='up'){toco=juego.colisiones(self,0,8)}
-		if(sentido=='down'){toco=juego.colisiones(self,0,-8)}
-		if(sentido=='left'){toco=juego.colisiones(self,-8,0)}
-		if(sentido=='right'){toco=juego.colisiones(self,8,0) }
+		if(sentido==opcionpersonaje.up()){toco=juego.colisiones(self,0,8)}
+		if(sentido==opcionpersonaje.down()){toco=juego.colisiones(self,0,-8)}
+		if(sentido==opcionpersonaje.left()){toco=juego.colisiones(self,-8,0)}
+		if(sentido==opcionpersonaje.right()){toco=juego.colisiones(self,8,0) }
 		if(toco!=[]){
 			if(toco.get(0).item().n()==maestro.quest().buscar()) {
 				juego.puntos().correcto()
@@ -218,10 +227,10 @@ object personaje{
 			}
 			if(juego.puntos().acierto()==5){
 				juego.cambiarEscenario(1)
-				juego.idioma("eng")
+				juego.idioma(opcionlenguaje.ingles())
 			}
 			if(juego.puntos().acierto()==10){
-				juego.idioma("jap")
+				juego.idioma(opcionlenguaje.japones())
 			}
 			if(juego.puntos().intentos()==25){
 				juego.end()
@@ -233,97 +242,72 @@ object personaje{
 				}
 		}	
 	}
-	
 	method up(){
 		
 		game.schedule(velo, { image ="personaje/9.png"  })
 		game.schedule(velo*2, { image ="personaje/10.png"  })
-		game.schedule(velo*3, { image ="personaje/9.png" y+=2 })
+		game.schedule(velo*3, { image ="personaje/9.png" y+=movimiento })
 		game.schedule(velo*4, { image ="personaje/11.png"  })
-		game.schedule(velo*5, { image ="personaje/9.png" y+=2 })
+		game.schedule(velo*5, { image ="personaje/9.png" y+=movimiento })
 	}
 	method down(){
 		game.schedule(velo*1, { image ="personaje/0.png" })
 		game.schedule(velo*2, { image ="personaje/1.png" })
-		game.schedule(velo*3, { image ="personaje/0.png" y-=2 })
+		game.schedule(velo*3, { image ="personaje/0.png" y-=movimiento })
 		game.schedule(velo*4, { image ="personaje/2.png" })
-		game.schedule(velo*5, { image ="personaje/0.png" y-=2 })
+		game.schedule(velo*5, { image ="personaje/0.png" y-=movimiento })
 	}
 	method left(){
 		game.schedule(velo*1, { image ="personaje/3.png" })
 		game.schedule(velo*2, { image ="personaje/4.png" })
-		game.schedule(velo*3, { image ="personaje/3.png" x-=2 })
+		game.schedule(velo*3, { image ="personaje/3.png" x-=movimiento })
 		game.schedule(velo*4, { image ="personaje/5.png" })
-		game.schedule(velo*5, { image ="personaje/3.png" x-=2 })
+		game.schedule(velo*5, { image ="personaje/3.png" x-=movimiento })
 	}
 	method right(){
 		game.schedule(velo*1, { image ="personaje/6.png"  })
 		game.schedule(velo*2, { image ="personaje/7.png"  })
-		game.schedule(velo*3, { image ="personaje/6.png" x+=2 })
+		game.schedule(velo*3, { image ="personaje/6.png" x+=movimiento })
 		game.schedule(velo*4, { image ="personaje/8.png"  })
-		game.schedule(velo*5, { image ="personaje/6.png" x+=2 })
+		game.schedule(velo*5, { image ="personaje/6.png" x+=movimiento })
 	}
-	method up_of(){
-		game.schedule(velo, { image ="personaje/9.png"    })
-		game.schedule(velo*2, { image ="personaje/10.png" })
-		game.schedule(velo*3, { image ="personaje/9.png"    })
-		game.schedule(velo*4, { image ="personaje/11.png" })
-		game.schedule(velo*5, { image ="personaje/9.png"  })
-	}
-	method down_of(){
-		game.schedule(velo*1, { image ="personaje/0.png" })
-		game.schedule(velo*2, { image ="personaje/1.png" })
-		game.schedule(velo*3, { image ="personaje/0.png" })
-		game.schedule(velo*4, { image ="personaje/2.png" })
-		game.schedule(velo*5, { image ="personaje/0.png" })
-	}
-	method left_of(){
-		game.schedule(velo*1, { image ="personaje/3.png" })
-		game.schedule(velo*2, { image ="personaje/4.png" })
-		game.schedule(velo*3, { image ="personaje/3.png" })
-		game.schedule(velo*4, { image ="personaje/5.png" })
-		game.schedule(velo*5, { image ="personaje/3.png" })
-	}
-	method right_of(){
-		game.schedule(velo*1, { image ="personaje/6.png" })
-		game.schedule(velo*2, { image ="personaje/7.png" })
-		game.schedule(velo*3, { image ="personaje/6.png" })
-		game.schedule(velo*4, { image ="personaje/8.png" })
-		game.schedule(velo*5, { image ="personaje/6.png" })
-	}
-	
-}
 
+}
+//maneja el puntero del menu principal
 object puntero{
+	const property inicio=0
+	const property lenguaje=1
+	const property salir=2
 	var property image="items/18.png"
 	var property x=2*16
 	var property y=9*16
 	var property opcion = 0
-	method position() = game.at(x,y) 
-	method position(a){
-		if(a==0) y=9*16
-		if(a==1) y=6*16
-		if(a==2) y=3*16
+	method position() = game.at(x,y)
+	//cambia la posicion del puntero  
+	method position(_opcion){
+		if(_opcion==inicio) y=9*16
+		if(_opcion==lenguaje) y=6*16
+		if(_opcion==salir) y=3*16
 	}
 	method up(){
-		if (opcion == 0) opcion = 2 
+		if (opcion == inicio) opcion = salir 
 		else opcion--
 		self.position(opcion)
 	}
 	method down(){
-		if (opcion == 2) opcion = 0 
+		if (opcion == salir) opcion = inicio 
 		else opcion++
 		self.position(opcion)
 	}
 	method left(){
-		if (juego.idioma()=="esp") juego.idioma("eng")
-		if (juego.idioma()=="eng") juego.idioma("jap")
-		if (juego.idioma()=="jap") juego.idioma("esp")
+		if (juego.idioma()==opcionlenguaje.espanol()) juego.idioma(opcionlenguaje.ingles())
+		if (juego.idioma()==opcionlenguaje.ingles()) juego.idioma(opcionlenguaje.japones())
+		if (juego.idioma()==opcionlenguaje.japones()) juego.idioma(opcionlenguaje.espanol())
 	}
 	method right(){
-		if (juego.idioma()=="esp") juego.idioma("jap")
-		if (juego.idioma()=="eng") juego.idioma("esp")
-		if (juego.idioma()=="jap") juego.idioma("eng")
+		if (juego.idioma()==opcionlenguaje.espanol()) juego.idioma(opcionlenguaje.japones())
+		if (juego.idioma()==opcionlenguaje.ingles())  juego.idioma(opcionlenguaje.espanol())
+		if (juego.idioma()==opcionlenguaje.japones()) juego.idioma(opcionlenguaje.ingles())
 	}
 	method enter(){
 		if(opcion==0){
@@ -337,31 +321,34 @@ object puntero{
 	}
 	
 }
+//maneja el puntero del menu de pausa
 object subpuntero{
+
 	var property image="items/18.png"
 	var property x=2*16
 	var property y=9*16
 	var property opcion = 0
 	method position() = game.at(x,y) 
-	method position(a){
-		if(a==0) y=8*16
-		if(a==1) y=4*16
+	
+	method position(_opcion){
+		if(_opcion==opcionsubmenu.reinicio()) y=8*16
+		if(_opcion==opcionsubmenu.salir()) y=4*16
 	}
 	method up(){
-		if (opcion == 0) opcion = 1
-		if (opcion == 1) opcion = 0
+		if (opcion == opcionsubmenu.reinicio()) opcion = opcionsubmenu.salir()
+		if (opcion == opcionsubmenu.salir()) opcion = opcionsubmenu.reinicio()
 		self.position(opcion)
 	}
 	method down(){
 		self.up()
 	}
 	method enter(){
-		if(opcion==0){
+		if(opcion==opcionsubmenu.reinicio()){
 			juego.liberar()			
 			juego.preconfig()
 			juego.juego()
 		}
-		if(opcion==1){
+		if(opcion==opcionsubmenu.salir()){
 			game.stop()
 		}
 	}
@@ -369,27 +356,31 @@ object subpuntero{
 }
 
 object teclado {
-
+	//enum de la opciones de la config del teclado
+	
 	method setConfig(tipo) {
-		if (tipo == "menu") { 
+		//configuro el teclado para solo funcione el menu
+		if (tipo == opcionteclado.menu()) { 
 			keyboard.up().onPressDo({ puntero.up()})
 			keyboard.down().onPressDo({ puntero.down()})
 			keyboard.left().onPressDo({ puntero.left()})
 			keyboard.right().onPressDo({ puntero.right()})
 			keyboard.enter().onPressDo({ puntero.enter()})
 		}
-		if (tipo == "sub") { 
+		//configuro el teclado para solo funcione el menu de pausa
+		if (tipo == opcionteclado.submenu()) { 
 			keyboard.up().onPressDo({ subpuntero.up()})
 			keyboard.down().onPressDo({ subpuntero.down()})
 			keyboard.enter().onPressDo({ subpuntero.enter()})
 		}
-		if (tipo == "juego") {
-			keyboard.up().onPressDo({ personaje.mover('up')})
-			keyboard.down().onPressDo({ personaje.mover('down')})
-			keyboard.left().onPressDo({ personaje.mover('left')})
-			keyboard.right().onPressDo({ personaje.mover('right')})
-			keyboard.any().onPressDo({var a=maestro.texto()
-				if(a!="")game.say(maestro, maestro.texto())
+		//configuro el teclado para solo funcione el juego
+		if (tipo == opcionteclado.juego()) {
+			keyboard.up().onPressDo({ personaje.mover(opcionpersonaje.up())})
+			keyboard.down().onPressDo({ personaje.mover(opcionpersonaje.down())})
+			keyboard.left().onPressDo({ personaje.mover(opcionpersonaje.left())})
+			keyboard.right().onPressDo({ personaje.mover(opcionpersonaje.right())})
+			keyboard.any().onPressDo({var texto=maestro.texto()
+				if(texto!="")game.say(maestro, maestro.texto())
 			})
 			keyboard.space().onPressDo({ personaje.interactuar()})
 			keyboard.r().onPressDo({ personaje.reset()})
@@ -410,13 +401,13 @@ object menudic{
 		list.put("inicio","menu/inicio.png")
 		list.put("idioma","menu/idioma.png")
 		list.put("salir" ,"menu/salir.png")
-		list.put("esp"   ,"menu/espanol.png")
-		list.put("eng"   ,"menu/ingles.png")
-		list.put("jap"   ,"menu/japones.png")
+		list.put("espanol"   ,"menu/espanol.png")
+		list.put("ingles"   ,"menu/ingles.png")
+		list.put("japones"   ,"menu/japones.png")
 	}
 }
 
-class anuncios{
+class Anuncios{
 	var property x
 	var property y
 	var property text = ""
