@@ -26,13 +26,7 @@ class FactorySoil{
 	}
 	
 	method makeMap(lista){
-		/*
-		 return lista.map({p=>{	
-		 	return self.make(p.get(0),p.get(1),p.get(2))
-		 }})*/
-		var _lista=[]
-		 lista.forEach({p=>_lista.add(self.make(p.get(0),p.get(1),p.get(2)))		 })
-		 return _lista
+		 return lista.map({p=>self.make(p.get(0),p.get(1),p.get(2))})
 	}
 }
 //fabrica que construye los item del juego
@@ -43,10 +37,8 @@ class FactoryItem{
 		return new ObjetoIntereactivo(x = x*16 ,y = y*16 ,image = itemdic.list().get(t).image(),item=itemdic.list().get(t))
 	}
 //Recibe una lista de objetos y los construye en el escenario
- 	method makes(l){
-		var lista=[]
-		l.forEach({p=>lista.add(self.make(p.get(0), p.get(1), p.get(2)))})
-		return lista
+ 	method makes(lista){
+		return lista.map({p=>self.make(p.get(0), p.get(1), p.get(2))})
 	}
 }
 
